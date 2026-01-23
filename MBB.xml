@@ -239,23 +239,23 @@
 				<Scripts>
 					<OnValueChanged>
 						if( self:GetValue() == 0 ) then
-							getglobal(self:GetName().."Text"):SetText(MBB_OPTIONS_SLIDEROFF);
+							_G[self:GetName().."Text"]:SetText(MBB_OPTIONS_SLIDEROFF);
 						else
-							getglobal(self:GetName().."Text"):SetText(string.format("%.3f", self:GetValue()) .. " " .. MBB_OPTIONS_SLIDERSEK);
+							_G[self:GetName().."Text"]:SetText(string.format("%.3f", self:GetValue()) .. " " .. MBB_OPTIONS_SLIDERSEK);
 						end
 					</OnValueChanged>
 					<OnLoad inherit="prepend">
 						self:SetMinMaxValues(0,5);
 						self:SetValueStep(1);
-						getglobal(self:GetName().."High"):SetText("5 " .. MBB_OPTIONS_SLIDERSEK);
-						getglobal(self:GetName().."Low"):SetText(MBB_OPTIONS_SLIDEROFF);
+						_G[self:GetName().."High"]:SetText("5 " .. MBB_OPTIONS_SLIDERSEK);
+						_G[self:GetName().."Low"]:SetText(MBB_OPTIONS_SLIDEROFF);
 					</OnLoad>
 					<OnShow>
 						self:SetValue(MBB_Options.CollapseTimeout);
 						if( MBB_Options.CollapseTimeout == 0 ) then
-							getglobal(self:GetName().."Text"):SetText(MBB_OPTIONS_SLIDEROFF);
+							_G[self:GetName().."Text"]:SetText(MBB_OPTIONS_SLIDEROFF);
 						else
-							getglobal(self:GetName().."Text"):SetText(self:GetValue() .. " " .. MBB_OPTIONS_SLIDERSEK);
+							_G[self:GetName().."Text"]:SetText(self:GetValue() .. " " .. MBB_OPTIONS_SLIDERSEK);
 						end
 					</OnShow>
 				</Scripts>
