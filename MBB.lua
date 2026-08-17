@@ -8,7 +8,7 @@
 	
 ]]
 
-MBB_Version = "4.0.30";
+MBB_Version = "4.0.31";
 
 -- Setup some variable for debugging.
 MBB_DebugFlag = 0;
@@ -297,7 +297,7 @@ end
 
 function MBB_SlashHandler(cmd)
 	if( cmd == "buttons" ) then
-		MBB_Print("MBB Buttons:");
+		MBB_Print("MBB Continuum Buttons:");
 		
 		if( #MBB_Buttons > 0 ) then
 			for i,name in ipairs(MBB_Buttons) do
@@ -367,7 +367,7 @@ function MBB_SlashHandler(cmd)
 			MBB_Print(MBB_NOERRORS);
 		end
 	else
-		MBB_Print("MBB v" .. MBB_Version .. ":");
+		MBB_Print("MBB Continuum v" .. MBB_Version .. ":");
 		MBB_Print(MBB_HELP1);
 		MBB_Print(MBB_HELP2);
 		MBB_Print(MBB_HELP3);
@@ -1102,7 +1102,7 @@ end
 
 function MBB_Debug(msg)
 	if (MBB_DebugFlag == 1) then
-		MBB_Print("MBB Debug : " .. tostring(msg));
+		MBB_Print("MBB Continuum Debug: " .. tostring(msg));
 	end
 end
 

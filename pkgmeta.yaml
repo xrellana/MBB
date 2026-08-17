@@ -3,5 +3,6 @@ ignore:
   - release.sh
   - pkgmeta.yaml
   - changelog.txt
+  - README.md
   - .gitignore
   - .github

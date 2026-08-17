@@ -65,7 +65,7 @@
 			<OnEnter>
 				MBB_ShowTimeout = -1;
 				GameTooltip:SetOwner(self, "ANCHOR_LEFT");
-				GameTooltip:AddLine("MinimapButtonBag Reborn");
+				GameTooltip:AddLine("MBB Continuum");
 				GameTooltip:AddLine(MBB_TOOLTIP1, 0, 1, 0);
 				GameTooltip:Show();
 			</OnEnter>
@@ -662,7 +662,7 @@
 		</Frames>
 		<Scripts>
 			<OnShow>
-				MBB_OptionsFrame_HeaderText:SetText("MBB" .. " " .. MBB_OPTIONS_HEADER);
+				MBB_OptionsFrame_HeaderText:SetText("MBB Continuum" .. " " .. MBB_OPTIONS_HEADER);
 				MBB_UpdateAltRadioButtons();
 			</OnShow>
 		</Scripts>

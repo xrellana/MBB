@@ -21,11 +21,42 @@ jobs:
           persist-credentials: false
 
       - name: Build release package
-        run: bash release.sh -d -m pkgmeta.yaml
+        run: bash release.sh -d -u -m pkgmeta.yaml
 
       - name: Verify release package
         shell: bash
         run: |
+          expected=(
+            CHANGELOG.md
+            LICENSE
+            MBB.lua
+            MBB.toc
+            MBB.xml
+            localization-deDE.lua
+            localization-enGB.lua
+            localization-frFR.lua
+            localization-koKR.lua
+            localization-ruRU.lua
+            localization-zhCN.lua
+            localization-zhTW.lua
+          )
+          mapfile -t actual < <(find .release/MBB -type f -printf '%P\n' | sort)
+          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
+
+          if ! diff -u \
+            <(printf '%s\n' "${expected_sorted[@]}") \
+            <(printf '%s\n' "${actual[@]}"); then
+            echo "::error::release package contains missing or unexpected files"
+            exit 1
+          fi
+
+          crlf_files="$(grep -rIl $'\r' .release/MBB || true)"
+          if [[ -n "$crlf_files" ]]; then
+            printf '%s\n' "$crlf_files"
+            echo "::error::release package contains CRLF line endings"
+            exit 1
+          fi
+
           shopt -s nullglob
           packages=(.release/*.zip)
           if (( ${#packages[@]} == 0 )); then

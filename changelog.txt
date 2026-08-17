@@ -1,4 +1,10 @@
 Changes
+v4.0.31:
+ - Rebrand the maintained edition as MBB Continuum.
+ - Preserve the MBB addon ID and saved variables for upgrade compatibility.
+ - Limit release archives to addon files, the license, and generated changelog.
+ - Enforce LF line endings in source and release packages.
+
 v4.0.30:
  - Update for WoW 12.1.
  - Fix default options being mutated after a reset.
