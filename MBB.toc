@@ -1,7 +1,7 @@
 ## Interface: 120100
 ## Author: Zane
 ## Contributors: skunfly, CosmicCleric, karlsnyder, vallantv
-## Version: 4.0.31
+## Version: 4.0.32
 ## Title: MBB Continuum
 ## X-Category: Map
 ## Notes: Collects addon minimap buttons into a clean, expandable menu.

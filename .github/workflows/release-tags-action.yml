@@ -82,3 +82,4 @@ jobs:
               --verify-tag \
               --generate-notes \
               --title "$TAG_NAME"
+          fi

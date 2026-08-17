@@ -15,7 +15,7 @@ MBB Continuum keeps your World of Warcraft minimap tidy by collecting compatible
 
 ## Compatibility
 
-MBB Continuum 4.0.31 targets World of Warcraft Retail 12.1 (`Interface: 120100`). Classic compatibility is not claimed.
+MBB Continuum 4.0.32 targets World of Warcraft Retail 12.1 (`Interface: 120100`). Classic compatibility is not claimed.
 
 The addon intentionally keeps the internal addon folder and saved-variable names as `MBB`. Replacing an older MBB installation should therefore preserve compatible per-character settings. Do not install multiple MBB forks side by side; remove the old folder first, then install this version as `Interface/AddOns/MBB`.
 

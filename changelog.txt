@@ -1,4 +1,7 @@
 Changes
+v4.0.32:
+ - Fix the GitHub Release workflow shell syntax.
+
 v4.0.31:
  - Rebrand the maintained edition as MBB Continuum.
  - Preserve the MBB addon ID and saved variables for upgrade compatibility.
