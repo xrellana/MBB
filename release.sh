@@ -278,6 +278,7 @@ elif [ -f ".env" ]; then
 fi
 [ -z "$cf_token" ] && cf_token=$CF_API_KEY
 [ -z "$github_token" ] && github_token=$GITHUB_OAUTH
+[ -z "$github_token" ] && github_token=$GITHUB_API_TOKEN
 [ -z "$wowi_token" ] && wowi_token=$WOWI_API_TOKEN
 
 # Set $releasedir to the directory which will contain the generated addon zipfile.
@@ -880,7 +881,9 @@ if [ -z "$toc_version" ]; then
 	fi
 fi
 if [ -z "$game_version" ]; then
-	game_version="${toc_version:0:1}.$( printf "%d" ${toc_version:1:2} ).$( printf "%d" ${toc_version:3:2} )"
+	# Interface versions use the last four digits for minor/patch. The major
+	# version can be more than one digit (for example, 120100 is WoW 12.1.0).
+	game_version=$( printf "%d.%d.%d" $(( 10#${toc_version:0: -4} )) $(( 10#${toc_version: -4:2} )) $(( 10#${toc_version: -2:2} )) )
 fi
 
 # Get the title of the project for using in the changelog.

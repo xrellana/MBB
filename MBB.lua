@@ -8,7 +8,7 @@
 	
 ]]
 
-MBB_Version = "4.0.26";
+MBB_Version = "4.0.30";
 
 -- Setup some variable for debugging.
 MBB_DebugFlag = 0;
@@ -23,6 +23,8 @@ MBB_FuBar_MinimapContainer = "FuBarPlugin-MinimapContainer-2.0";
 MBB_Buttons = {};
 MBB_Exclude = {};
 
+local MBB_Initialized = false;
+
 MBB_DefaultOptions = {
 	["ButtonPos"] = {-18, -100},
 	["AttachToMinimap"] = 1,
@@ -32,6 +34,121 @@ MBB_DefaultOptions = {
 	["MaxButtonsPerLine"] = 0,
 	["AltExpandDirection"] = 4
 };
+
+local function MBB_CopyTable(source)
+	local copy = {};
+	for key, value in pairs(source) do
+		if( type(value) == "table" ) then
+			copy[key] = MBB_CopyTable(value);
+		else
+			copy[key] = value;
+		end
+	end
+	return copy;
+end
+
+local MBB_ValidAnchorPoints = {
+	TOPLEFT = true,
+	TOP = true,
+	TOPRIGHT = true,
+	LEFT = true,
+	CENTER = true,
+	RIGHT = true,
+	BOTTOMLEFT = true,
+	BOTTOM = true,
+	BOTTOMRIGHT = true
+};
+
+local function MBB_IsSecretValue(value)
+	return issecretvalue and issecretvalue(value);
+end
+
+local function MBB_SecurityFlagIsSet(frame, methodName)
+	local method = frame and frame[methodName];
+	if( not method ) then
+		return false;
+	end
+
+	local value = method(frame);
+	if( MBB_IsSecretValue(value) ) then
+		return true;
+	end
+	return value and true or false;
+end
+
+local function MBB_IsUnsafeFrame(frame)
+	if( not frame or MBB_IsSecretValue(frame) ) then
+		return true;
+	end
+
+	-- IsForbidden must be queried first because almost every other method is
+	-- inaccessible on a forbidden object. Secret security flags are treated
+	-- conservatively so they are never used in comparisons or layout calls.
+	return MBB_SecurityFlagIsSet(frame, "IsForbidden") or
+		MBB_SecurityFlagIsSet(frame, "IsProtected") or
+		MBB_SecurityFlagIsSet(frame, "IsAnchoringSecret") or
+		MBB_SecurityFlagIsSet(frame, "IsAnchoringRestricted");
+end
+
+local function MBB_LoadOptions()
+	if( type(MBB_Exclude) ~= "table" ) then
+		MBB_Exclude = {};
+	end
+
+	if( type(MBB_Options) ~= "table" ) then
+		MBB_Options = {};
+	end
+
+	for opt, val in pairs(MBB_DefaultOptions) do
+		if( MBB_Options[opt] == nil ) then
+			MBB_Debug(opt .. " option set to default: " .. tostring(val));
+			if( type(val) == "table" ) then
+				MBB_Options[opt] = MBB_CopyTable(val);
+			else
+				MBB_Options[opt] = val;
+			end
+		else
+			MBB_Debug(opt .. " option exists: " .. tostring(MBB_Options[opt]));
+		end
+	end
+
+	if( type(MBB_Options.ButtonPos) ~= "table" or
+		type(MBB_Options.ButtonPos[1]) ~= "number" or
+		type(MBB_Options.ButtonPos[2]) ~= "number" ) then
+		MBB_Options.ButtonPos = MBB_CopyTable(MBB_DefaultOptions.ButtonPos);
+	end
+
+	if( MBB_Options.AttachToMinimap ~= 0 and MBB_Options.AttachToMinimap ~= 1 ) then
+		MBB_Options.AttachToMinimap = MBB_DefaultOptions.AttachToMinimap;
+	end
+
+	if( type(MBB_Options.DetachedButtonPos) ~= "string" or
+		not MBB_ValidAnchorPoints[MBB_Options.DetachedButtonPos] ) then
+		MBB_Options.DetachedButtonPos = MBB_DefaultOptions.DetachedButtonPos;
+	end
+
+	if( type(MBB_Options.CollapseTimeout) ~= "number" or MBB_Options.CollapseTimeout < 0 ) then
+		MBB_Options.CollapseTimeout = MBB_DefaultOptions.CollapseTimeout;
+	end
+
+	if( type(MBB_Options.MaxButtonsPerLine) ~= "number" or MBB_Options.MaxButtonsPerLine < 0 ) then
+		MBB_Options.MaxButtonsPerLine = MBB_DefaultOptions.MaxButtonsPerLine;
+	else
+		MBB_Options.MaxButtonsPerLine = math.floor(MBB_Options.MaxButtonsPerLine);
+	end
+
+	if( type(MBB_Options.ExpandDirection) ~= "number" or
+		MBB_Options.ExpandDirection < 1 or MBB_Options.ExpandDirection > 4 or
+		MBB_Options.ExpandDirection ~= math.floor(MBB_Options.ExpandDirection) ) then
+		MBB_Options.ExpandDirection = MBB_DefaultOptions.ExpandDirection;
+	end
+
+	if( type(MBB_Options.AltExpandDirection) ~= "number" or
+		MBB_Options.AltExpandDirection < 1 or MBB_Options.AltExpandDirection > 4 or
+		MBB_Options.AltExpandDirection ~= math.floor(MBB_Options.AltExpandDirection) ) then
+		MBB_Options.AltExpandDirection = MBB_DefaultOptions.AltExpandDirection;
+	end
+end
 
 
 BACKDROP_MAXBUTTONS_OPTIONS = {
@@ -224,18 +341,22 @@ function MBB_SlashHandler(cmd)
 		-- Reset the main button position.
 		MBB_ResetButtonPosition()
 	elseif( cmd == "reset all" ) then
-		MBB_Options = MBB_DefaultOptions;
+		MBB_Options = MBB_CopyTable(MBB_DefaultOptions);
 		
 		-- Reset the main button position.
 		MBB_ResetButtonPosition()
 		
-		for i=1,table.maxn(MBB_Exclude) do
-			MBB_AddButton(MBB_Exclude[i]);
+		local excluded = MBB_Exclude;
+		MBB_Exclude = {};
+		for _, name in ipairs(excluded) do
+			if( _G[name] and _G[name].oshow ) then
+				MBB_AddButton(name);
+			end
 		end
 		
 		MBB_SetPositions();
 	elseif( cmd == "errors" ) then
-		if( table.maxn(MBB_DebugInfo) > 0 ) then
+		if( next(MBB_DebugInfo) ) then
 			for name, arr in pairs(MBB_DebugInfo) do
 				MBB_Print(name);
 				for _, error in pairs(arr) do
@@ -310,23 +431,27 @@ function MBB_TestFrame(name)
 end
 
 function MBB_OnEvent(self, event, ...)
-	if( MBB_Options ) then
-		for opt,val in pairs(MBB_DefaultOptions) do
-			if( not MBB_Options[opt] ) then
-				MBB_Debug(opt .. " option set to default: " .. tostring(val));
-				MBB_Options[opt] = val;
-			else
-				MBB_Debug(opt .. " option exists: " .. tostring(MBB_Options[opt]));
-			end
-		end
-	else
-		MBB_Options = MBB_DefaultOptions;
+	local addonName = ...;
+	if( event == "ADDON_LOADED" and addonName ~= "MBB" ) then
+		return;
 	end
+	if( MBB_Initialized ) then
+		return;
+	end
+	MBB_Initialized = true;
+
+	self:UnregisterEvent("ADDON_LOADED");
+	MBB_LoadOptions();
 	MBB_SetButtonPosition();
 end
 
 function MBB_PrepareButton(name)
 	local buttonframe = _G[name]
+	if( MBB_IsUnsafeFrame(buttonframe) ) then
+		MBB_Debug("Skipping protected frame: " .. tostring(name));
+		return false;
+	end
+
 	local hasHeader;
 	if( buttonframe.GetAttribute ) then
 		hasHeader = buttonframe:GetAttribute("anchorchild");
@@ -344,24 +469,52 @@ function MBB_PrepareButton(name)
 			end
 		end
 	end
+
+	if( buttonframe.hasParentFrame ) then
+		local parent = buttonframe:GetParent();
+		if( MBB_IsUnsafeFrame(parent) ) then
+			MBB_Debug("Skipping button with protected parent: " .. tostring(name));
+			return false;
+		end
+	end
+
+	local buttonIsVisible = buttonframe:IsVisible();
+	if( MBB_IsSecretValue(buttonIsVisible) ) then
+		MBB_Debug("Skipping button with secret visibility: " .. tostring(name));
+		return false;
+	end
+	local parentIsVisible;
+	if( buttonframe.hasParentFrame ) then
+		parentIsVisible = buttonframe:GetParent():IsVisible();
+		if( MBB_IsSecretValue(parentIsVisible) ) then
+			MBB_Debug("Skipping button with secret parent visibility: " .. tostring(name));
+			return false;
+		end
+	end
 	
 	if( buttonframe ) then
 		if( buttonframe.RegisterForClicks ) then
-			buttonframe:RegisterForClicks("LeftButtonDown","RightButtonDown");
+			buttonframe:RegisterForClicks("LeftButtonDown", "RightButtonDown");
 		end
 		
-		buttonframe.isvisible = buttonframe:IsVisible();
+		buttonframe.isvisible = buttonIsVisible;
 		
 		if( buttonframe.hasParentFrame ) then
 			local parent = buttonframe:GetParent();
 			parent.MBBChild = buttonframe:GetName();
-			buttonframe.parentisvisible = parent:IsVisible();
+			buttonframe.parentisvisible = parentIsVisible;
 			parent.oshow = parent.Show;
 			parent.Show = function(...)
 				local self = select(1, ...);
 				local parent = select(1, ...);
+				if( MBB_IsUnsafeFrame(parent) ) then
+					return;
+				end
 				MBB_Debug("Parent Frame: " .. parent:GetName());
 				local child = _G[parent.MBBChild]
+				if( MBB_IsUnsafeFrame(child) ) then
+					return;
+				end
 				MBB_Debug("Child Frame: " .. child:GetName());
 				child.parentisvisible = true;
 				MBB_Debug("Showing frame: " .. parent:GetName());
@@ -376,8 +529,14 @@ function MBB_PrepareButton(name)
 			parent.ohide = parent.Hide;
 			parent.Hide = function(...)
 				local parent = select(1, ...);
+				if( MBB_IsUnsafeFrame(parent) ) then
+					return;
+				end
 				MBB_Debug("Parent Frame: " .. parent:GetName());
 				local child = _G[parent.MBBChild]
+				if( MBB_IsUnsafeFrame(child) ) then
+					return;
+				end
 				MBB_Debug("Child Frame: " .. child:GetName());
 				child.parentisvisible = false;
 				MBB_Debug("Hiding frame: " .. parent:GetName());
@@ -391,6 +550,9 @@ function MBB_PrepareButton(name)
 		buttonframe.oshow = buttonframe.Show;
 		buttonframe.Show = function(...)
 			local innerframe = select(1, ...);
+			if( MBB_IsUnsafeFrame(innerframe) ) then
+				return;
+			end
 			innerframe.isvisible = true;
 			MBB_Debug("Showing innerframe: " .. innerframe:GetName());
 			if( not MBB_IsInArray(MBB_Exclude, innerframe:GetName()) ) then
@@ -408,10 +570,13 @@ function MBB_PrepareButton(name)
 		buttonframe.ohide = buttonframe.Hide;
 		buttonframe.Hide = function(...)
 			local innerframe = select(1, ...);
+			if( MBB_IsUnsafeFrame(innerframe) ) then
+				return;
+			end
 			MBB_Debug("Hiding innerframe: " .. innerframe:GetName());
-			if( innerframe ~= buttonframe ) then
-				innerframe.isvisible = false;
-				innerframe.ohide(innerframe);
+			innerframe.isvisible = false;
+			if( innerframe.ohide ) then
+				innerframe.ohide(select(1, ...));
 			end
 			if( not MBB_IsInArray(MBB_Exclude, innerframe:GetName()) ) then
 				MBB_SetPositions();
@@ -507,10 +672,22 @@ function MBB_PrepareButton(name)
 			end);
 		end
 	end
+
+	return true;
 end
 
 function MBB_AddButton(name)
 	local child = _G[name]
+	if( MBB_IsUnsafeFrame(child) or MBB_IsInArray(MBB_Buttons, name) ) then
+		return false;
+	end
+
+	if( not child.oshow and not MBB_PrepareButton(name) ) then
+		return false;
+	end
+	if( child.hasParentFrame and MBB_IsUnsafeFrame(child:GetParent()) ) then
+		return false;
+	end
 	
 	child.opoint = {child:GetPoint()};
 	if( not child.opoint[1] ) then
@@ -538,15 +715,23 @@ function MBB_AddButton(name)
 	if( i ) then
 		table.remove(MBB_Exclude, i);
 	end
+
+	return true;
 end
 
 function MBB_RestoreButton(name)
 	local button = _G[name]
+	if( MBB_IsUnsafeFrame(button) or not button.oclearallpoints or not button.osetpoint or not button.opoint or not button.osize ) then
+		return false;
+	end
+	if( button.hasParentFrame and MBB_IsUnsafeFrame(button:GetParent()) ) then
+		return false;
+	end
 	
 	button.oclearallpoints(button);
 	button.osetpoint(button, button.opoint[1], button.opoint[2], button.opoint[3], button.opoint[4], button.opoint[5]);
 	button:SetHeight(button.osize[1]);
-	button:SetWidth(button.osize[1]);
+	button:SetWidth(button.osize[2]);
 	button.ClearAllPoints = button.oclearallpoints;
 	button.SetPoint = button.osetpoint;
 	MBB_Debug("EVENT Restoring Button");
@@ -557,11 +742,15 @@ function MBB_RestoreButton(name)
 		button.oshow(button);
 	end
 	
-	table.insert(MBB_Exclude, name);
+	if( not MBB_IsInArray(MBB_Exclude, name) ) then
+		table.insert(MBB_Exclude, name);
+	end
 	local i = MBB_IsInArray(MBB_Buttons, button:GetName());
 	if( i ) then
 		table.remove(MBB_Buttons, i);
 	end
+
+	return true;
 end
 
 function MBB_SetPositions()
@@ -580,14 +769,19 @@ function MBB_SetPositions()
 	
 	local pos = {0, 0};
 	local parentid = 0;
-	local firstid = 1;
+	local firstid;
 	local count = 1;
 	for i,name in ipairs(MBB_Buttons) do
 		local positionframe = _G[name]
-		if( not positionframe.hasParentFrame ) then
+		local canPosition = not MBB_IsUnsafeFrame(positionframe);
+		if( canPosition and not positionframe.hasParentFrame ) then
 			positionframe.parentisvisible = true;
 		end
-		if( positionframe.isvisible and positionframe.parentisvisible ) then
+		if( canPosition and positionframe.isvisible and positionframe.parentisvisible ) then
+			if( not firstid ) then
+				firstid = i;
+			end
+
 			local parent;
 			if( parentid==0 ) then
 				parent = MBB_MinimapButtonFrame;
@@ -645,7 +839,7 @@ function MBB_OnClick(arg1)
 			MBB_Options.DetachedButtonPos = MBB_DefaultOptions.DetachedButtonPos;
 		else
 			MBB_Options.AttachToMinimap = 1;
-			MBB_Options.ButtonPos = MBB_DefaultOptions.ButtonPos;
+			MBB_Options.ButtonPos = MBB_CopyTable(MBB_DefaultOptions.ButtonPos);
 		end
 		MBB_SetButtonPosition();
 	elseif( arg1 and arg1 == "RightButton" ) then
@@ -657,26 +851,30 @@ function MBB_OnClick(arg1)
 			MBB_Debug("EVENT OnClick");
 			for i,name in ipairs(MBB_Buttons) do
 				local clickframe = _G[name]
-				if( not clickframe.hasParentFrame ) then
-					clickframe.parentisvisible = true;
-				end
-				if( clickframe.isvisible and clickframe.parentisvisible ) then
-					if( clickframe.hasParentFrame and clickframe.hasParentFrame ) then
-						local parent = clickframe:GetParent();
-						if( parent.oshow ) then
-							parent.oshow(parent);
-						else
-							if( parent:GetName() ) then
-								if( not MBB_DebugInfo[parent:GetName()] ) then
-									MBB_DebugInfo[parent:GetName()] = {};
-								end
-								if( not MBB_IsInArray(MBB_DebugInfo[parent:GetName()], "No oshow") ) then
-									table.insert(MBB_DebugInfo[parent:GetName()], "No oshow");
+				if( not MBB_IsUnsafeFrame(clickframe) ) then
+					if( not clickframe.hasParentFrame ) then
+						clickframe.parentisvisible = true;
+					end
+					if( clickframe.isvisible and clickframe.parentisvisible ) then
+						if( clickframe.hasParentFrame ) then
+							local parent = clickframe:GetParent();
+							if( not MBB_IsUnsafeFrame(parent) and parent.oshow ) then
+								parent.oshow(parent);
+							elseif( not MBB_IsUnsafeFrame(parent) ) then
+								if( parent:GetName() ) then
+									if( not MBB_DebugInfo[parent:GetName()] ) then
+										MBB_DebugInfo[parent:GetName()] = {};
+									end
+									if( not MBB_IsInArray(MBB_DebugInfo[parent:GetName()], "No oshow") ) then
+										table.insert(MBB_DebugInfo[parent:GetName()], "No oshow");
+									end
 								end
 							end
+						else
+							if( clickframe.oshow ) then
+								clickframe.oshow(clickframe);
+							end
 						end
-					else
-						clickframe.oshow(clickframe);
 					end
 				end
 			end
@@ -690,23 +888,29 @@ function MBB_HideButtons()
 	MBB_ShowTimeout = -1;
 	for i,name in ipairs(MBB_Buttons) do
 		local buttonhideframe = _G[name]
-		if( buttonhideframe.hasParentFrame ) then
-			local parent = buttonhideframe:GetParent();
-			if( parent.ohide ) then
-				parent.ohide(parent);
-			else
-				if( parent:GetName() ) then
-					if( not MBB_DebugInfo[parent:GetName()] ) then
-						MBB_DebugInfo[parent:GetName()] = {};
+		if( not MBB_IsUnsafeFrame(buttonhideframe) ) then
+			if( buttonhideframe.hasParentFrame ) then
+				local parent = buttonhideframe:GetParent();
+				if( not MBB_IsUnsafeFrame(parent) and parent.ohide ) then
+					parent.ohide(parent);
+				elseif( not MBB_IsUnsafeFrame(parent) ) then
+					if( parent:GetName() ) then
+						if( not MBB_DebugInfo[parent:GetName()] ) then
+							MBB_DebugInfo[parent:GetName()] = {};
+						end
+						if( not MBB_IsInArray(MBB_DebugInfo[parent:GetName()], "No ohide") ) then
+							table.insert(MBB_DebugInfo[parent:GetName()], "No ohide");
+						end
 					end
-					if( not MBB_IsInArray(MBB_DebugInfo[parent:GetName()], "No ohide") ) then
-						table.insert(MBB_DebugInfo[parent:GetName()], "No ohide");
+					if( buttonhideframe.ohide ) then
+						buttonhideframe.ohide(buttonhideframe);
 					end
 				end
-				buttonhideframe.ohide(buttonhideframe);
+			else
+				if( buttonhideframe.ohide ) then
+					buttonhideframe.ohide(buttonhideframe);
+				end
 			end
-		else
-			buttonhideframe.ohide(buttonhideframe);
 		end
 	end
 	MBB_IsShown = 0;
@@ -756,11 +960,14 @@ function MBB_OnUpdate(elapsed)
 		
 		local children = {Minimap:GetChildren()};
 		for _, child in ipairs(children) do
-			if( child:GetName() and not child.oshow and ((child:HasScript("OnClick") and not MBB_IsKnownButton(child:GetName(), 3)) or (MBB_isButtonToBeIncluded(child:GetName()))) ) then
-				MBB_PrepareButton(child:GetName());
-				if( not MBB_IsInArray(MBB_Exclude, child:GetName()) ) then
-					MBB_AddButton(child:GetName());
-					MBB_SetPositions();
+			if( not MBB_IsUnsafeFrame(child) ) then
+				local childName = child:GetName();
+				if( not MBB_IsSecretValue(childName) and childName and not child.oshow and
+					((child:HasScript("OnClick") and not MBB_IsKnownButton(childName, 3)) or MBB_isButtonToBeIncluded(childName)) ) then
+					if( MBB_PrepareButton(childName) and not MBB_IsInArray(MBB_Exclude, childName) ) then
+						MBB_AddButton(childName);
+						MBB_SetPositions();
+					end
 				end
 			end
 		end
@@ -770,14 +977,17 @@ function MBB_OnUpdate(elapsed)
 	
 	if( MBB_DragFlag == 1 and MBB_Options.AttachToMinimap == 1 ) then
 		local xpos,ypos = GetCursorPosition();
-		local xmin,ymin = Minimap:GetLeft(), Minimap:GetBottom();
+		local scale = Minimap:GetEffectiveScale();
+		local centerX, centerY = Minimap:GetCenter();
+		xpos = xpos / scale - centerX;
+		ypos = ypos / scale - centerY;
 
-		xpos = xmin-xpos/Minimap:GetEffectiveScale()+70;
-		ypos = ypos/Minimap:GetEffectiveScale()-ymin-70;
+		local angle = math.atan2(ypos, xpos);
+		local radius = math.min(Minimap:GetWidth(), Minimap:GetHeight()) / 2;
+		local xoffset = Minimap:GetWidth() / 2 - MBB_MinimapButtonFrame:GetWidth() / 2 + math.cos(angle) * radius;
+		local yoffset = -Minimap:GetHeight() / 2 + MBB_MinimapButtonFrame:GetHeight() / 2 + math.sin(angle) * radius;
 
-		local angle = math.deg(math.atan2(ypos,xpos));
-		
-		MBB_MinimapButtonFrame:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 83-(cos(angle)*99), -83+(sin(angle)*99));
+		MBB_MinimapButtonFrame:SetPoint("TOPLEFT", Minimap, "TOPLEFT", xoffset, yoffset);
 	end
 	
 	if( MBB_Options.CollapseTimeout and MBB_Options.CollapseTimeout ~= 0 ) then
@@ -792,7 +1002,7 @@ end
 
 function MBB_ResetButtonPosition()
 	MBB_Options.AttachToMinimap = MBB_DefaultOptions.AttachToMinimap;
-	MBB_Options.ButtonPos = MBB_DefaultOptions.ButtonPos;
+	MBB_Options.ButtonPos = MBB_CopyTable(MBB_DefaultOptions.ButtonPos);
 	MBB_Options.DetachedButtonPos = MBB_DefaultOptions.DetachedButtonPos;
 	
 	MBB_SetButtonPosition();
@@ -844,7 +1054,7 @@ function MBB_UpdateAltRadioButtons()
 	for i,name in pairs(buttons) do
 		if( _G["MBB_OptionsFrame_" .. name .. "Radio"]:GetChecked() ) then
 			exchecked = i;
-			break;
+			break
 		end
 	end
 	
@@ -1008,7 +1218,7 @@ function MBB_NotSureIfThisIsNeeded()
 						if( subchild:HasScript("OnClick") ) then
 							child = subchild;
 							child.hasParentFrame = true;
-							break;
+							break
 						end
 					end
 				end

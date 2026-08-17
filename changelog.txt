@@ -1,4 +1,15 @@
 Changes
+v4.0.30:
+ - Update for WoW 12.1.
+ - Fix default options being mutated after a reset.
+ - Fix resetting excluded buttons skipping entries or erroring on unavailable addons.
+ - Fix hidden collected buttons remaining visible internally.
+ - Restore non-square minimap buttons to their original width.
+ - Initialize saved variables only once when MBB finishes loading.
+ - Skip protected, forbidden, and secret-anchor frames.
+ - Fix strict Lua 5.1 parsing of loop exits.
+ - Make minimap-edge dragging adapt to the current minimap size.
+
 v4.0.4:
  - Fixes for Handynotes and better RU localization
 

@@ -1,4 +1,4 @@
-# Minimap Button Bag Reborn (MMB Reborn)
+# Minimap Button Bag Reborn (MBB Reborn)
 
 
 ## Summary
@@ -8,7 +8,10 @@ MBB reduces minimap buttons and makes them accessible through a pop out menu. Cl
 Ctrl + Right Click - detach / reattach a minimap button
 
 ## Slash Commands
-/mbb - shows the MBB commands /mbb buttons - shows a list of all rfames in the MBB bar /mbb reset position - resets the position of the MBB button /mbb reset all - resets the MBB settings
+- `/mbb` - shows the MBB commands
+- `/mbb buttons` - shows a list of all frames in the MBB bar
+- `/mbb reset position` - resets the position of the MBB button
+- `/mbb reset all` - resets the MBB settings
 
 ## Authors
 

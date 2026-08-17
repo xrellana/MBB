@@ -6,7 +6,7 @@
 				MBB_OnLoad();
 			</OnLoad>
 			<OnEvent>
-				MBB_OnEvent();
+				MBB_OnEvent(self, event, ...);
 			</OnEvent>
 		</Scripts>
 	</Frame>

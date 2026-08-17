@@ -1,6 +1,7 @@
 package-as: MBB
 ignore:
   - release.sh
+  - pkgmeta.yaml
   - changelog.txt
   - .gitignore
   - .github
